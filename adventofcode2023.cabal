@@ -119,6 +119,7 @@ executable adventofcode2023
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.17.2.0,
+        regex-tdfa ^>=1.3.2.2,
         relude ^>=1.2.1.0,
         with-utf8 ^>=1.0.2.4
 
