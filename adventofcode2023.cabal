@@ -128,3 +128,7 @@ executable adventofcode2023
 
     -- Base language which the package is written in.
     default-language: GHC2021
+
+    other-modules:
+        Day1
+        Util
