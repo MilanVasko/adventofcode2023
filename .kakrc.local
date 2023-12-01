@@ -1,0 +1,4 @@
+hook global BufCreate .*\.hs$ %{
+	set-option buffer formatcmd 'fourmolu --stdin-input-file app/Main.hs'
+}
+

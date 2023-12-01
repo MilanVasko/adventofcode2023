@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+ghcid -c "cabal repl exe:adventofcode2023" --warnings -T :main
