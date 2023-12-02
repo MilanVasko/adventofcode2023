@@ -131,4 +131,5 @@ executable adventofcode2023
 
     other-modules:
         Day1
+        Day2
         Util
