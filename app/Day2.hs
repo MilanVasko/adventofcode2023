@@ -1,6 +1,8 @@
 module Day2 where
 
-import Data.Text qualified as T
+import Text.Megaparsec (Parsec, choice, chunk, parse, sepBy, sepBy1)
+import Text.Megaparsec.Char (char, hspace)
+import Text.Megaparsec.Char.Lexer (decimal)
 import Util qualified as U
 
 data Color = Red | Green | Blue
@@ -74,41 +76,37 @@ chooseCountByColor Green counts = counts.green
 chooseCountByColor Blue counts = counts.blue
 
 parseGame :: Text -> Maybe Game
-parseGame = parseLineHalves . T.splitOn ":"
+parseGame content = rightToMaybe $ parse parser "" content
 
-parseLineHalves :: [Text] -> Maybe Game
-parseLineHalves [firstHalf, secondHalf] = do
-    gameId' <- parseId firstHalf
-    rounds' <- parseRounds secondHalf
-    Just Game{gameId = gameId', rounds = rounds'}
-parseLineHalves _ = Nothing
+type Parser = Parsec Void Text
 
-parseId :: Text -> Maybe Int
-parseId x = case T.splitOn " " x of
-    ["Game", b] -> U.textToInt b
-    _ -> Nothing
+parser :: Parser Game
+parser = do
+    id' <- gameIdParser
+    void (char ':')
+    rounds' <- roundParser `sepBy1` char ';'
+    return Game{gameId = id', rounds = rounds'}
 
-parseRounds :: Text -> Maybe [Round]
-parseRounds = mapM parseRound . T.splitOn ";"
+gameIdParser :: Parser Int
+gameIdParser = do
+    void (chunk "Game")
+    void hspace
+    decimal
 
-parseRound :: Text -> Maybe Round
-parseRound = fmap createRound . mapM (parseCubes . T.strip) . T.splitOn ","
-  where
-    createRound :: [Cubes] -> Round
-    createRound cubes' = Round{cubes = cubes'}
+roundParser :: Parser Round
+roundParser = do
+    cubes' <- cubesParser `sepBy` char ','
+    return Round{cubes = cubes'}
 
-parseCubes :: Text -> Maybe Cubes
-parseCubes = parseCubes' . map T.strip . T.splitOn " "
-  where
-    parseCubes' :: [Text] -> Maybe Cubes
-    parseCubes' [rawCount, rawColor] = do
-        count' <- U.textToInt rawCount
-        color' <- parseColor rawColor
-        Just Cubes{count = count', color = color'}
-    parseCubes' _ = Nothing
-
-parseColor :: Text -> Maybe Color
-parseColor "blue" = Just Blue
-parseColor "green" = Just Green
-parseColor "red" = Just Red
-parseColor _ = Nothing
+cubesParser :: Parser Cubes
+cubesParser = do
+    void hspace
+    count' <- decimal
+    void hspace
+    color' <-
+        choice
+            [ Red <$ chunk "red"
+            , Green <$ chunk "green"
+            , Blue <$ chunk "blue"
+            ]
+    return Cubes{count = count', color = color'}
