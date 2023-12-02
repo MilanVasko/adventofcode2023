@@ -23,30 +23,55 @@ data Game = Game
     }
     deriving stock (Show)
 
-data MaxCounts = MaxCounts
+data ColorCounts = ColorCounts
     { red :: Int
     , green :: Int
     , blue :: Int
     }
+    deriving stock (Show)
 
 run :: IO ()
-run = U.loadAndRun "data/day2.txt" calculate calculate
+run = U.loadAndRun "data/day2.txt" (calculate calculation1) (calculate calculation2)
 
-calculate :: Text -> Maybe Int
-calculate = fmap (sum . map gameId . filter (isGamePossible $ MaxCounts{red = 12, green = 13, blue = 14})) . mapM parseGame . lines
+calculate :: ([Game] -> [Int]) -> Text -> Maybe Int
+calculate calculation = fmap (sum . calculation) . mapM parseGame . lines
 
-isGamePossible :: MaxCounts -> Game -> Bool
+calculation1 :: [Game] -> [Int]
+calculation1 = map gameId . filter (isGamePossible $ ColorCounts{red = 12, green = 13, blue = 14})
+
+calculation2 :: [Game] -> [Int]
+calculation2 = map calculateGamePower
+
+calculateGamePower :: Game -> Int
+calculateGamePower game =
+    let cubesInAllRounds = concatMap cubes game.rounds
+        updateMaximums current accum =
+            ColorCounts
+                { red = max (chooseCountByColor Red accum) (fromMaybe 0 (getCountIfColorMatches Red current))
+                , green = max (chooseCountByColor Green accum) (fromMaybe 0 (getCountIfColorMatches Green current))
+                , blue = max (chooseCountByColor Blue accum) (fromMaybe 0 (getCountIfColorMatches Blue current))
+                }
+        maximums = foldr updateMaximums (ColorCounts{red = 0, green = 0, blue = 0}) cubesInAllRounds
+     in maximums.red * maximums.green * maximums.blue
+
+getCountIfColorMatches :: Color -> Cubes -> Maybe Int
+getCountIfColorMatches Red Cubes{color = Red, count} = Just count
+getCountIfColorMatches Green Cubes{color = Green, count} = Just count
+getCountIfColorMatches Blue Cubes{color = Blue, count} = Just count
+getCountIfColorMatches _ _ = Nothing
+
+isGamePossible :: ColorCounts -> Game -> Bool
 isGamePossible maxCounts game =
     let cubesInAllRounds = concatMap cubes game.rounds
      in all isCountOK cubesInAllRounds
   where
     isCountOK :: Cubes -> Bool
-    isCountOK Cubes{count, color} = count <= chooseMaxCount color
+    isCountOK Cubes{count, color} = count <= chooseCountByColor color maxCounts
 
-    chooseMaxCount :: Color -> Int
-    chooseMaxCount Red = maxCounts.red
-    chooseMaxCount Green = maxCounts.green
-    chooseMaxCount Blue = maxCounts.blue
+chooseCountByColor :: Color -> ColorCounts -> Int
+chooseCountByColor Red counts = counts.red
+chooseCountByColor Green counts = counts.green
+chooseCountByColor Blue counts = counts.blue
 
 parseGame :: Text -> Maybe Game
 parseGame = parseLineHalves . T.splitOn ":"
