@@ -3,6 +3,7 @@ module Day2 where
 import Text.Megaparsec (Parsec, choice, chunk, parse, sepBy, sepBy1)
 import Text.Megaparsec.Char (char, hspace)
 import Text.Megaparsec.Char.Lexer (decimal)
+import Text.Megaparsec.Error (ParseErrorBundle)
 import Util qualified as U
 
 data Color = Red | Green | Blue
@@ -32,11 +33,14 @@ data ColorCounts = ColorCounts
     }
     deriving stock (Show)
 
-run :: IO ()
-run = U.loadAndRun "data/day2.txt" (calculate calculation1) (calculate calculation2)
+filePath :: FilePath
+filePath = "data/day2.txt"
 
-calculate :: ([Game] -> [Int]) -> Text -> Maybe Int
-calculate calculation = fmap (sum . calculation) . mapM parseGame . lines
+run :: IO ()
+run = U.loadAndRun' filePath (calculate calculation1) (calculate calculation2)
+
+calculate :: ([Game] -> [Int]) -> Text -> Text
+calculate calculation = U.prettyPrintParseError . fmap (sum . calculation) . mapM parseGame . lines
 
 calculation1 :: [Game] -> [Int]
 calculation1 = map gameId . filter (isGamePossible $ ColorCounts{red = 12, green = 13, blue = 14})
@@ -75,8 +79,8 @@ chooseCountByColor Red counts = counts.red
 chooseCountByColor Green counts = counts.green
 chooseCountByColor Blue counts = counts.blue
 
-parseGame :: Text -> Maybe Game
-parseGame content = rightToMaybe $ parse parser "" content
+parseGame :: Text -> Either (ParseErrorBundle Text Void) Game
+parseGame = parse parser filePath
 
 type Parser = Parsec Void Text
 

@@ -2,6 +2,8 @@ module Util where
 
 import Data.Text qualified as T
 import Data.Text.Read qualified as T
+import Text.Megaparsec (errorBundlePretty)
+import Text.Megaparsec.Error (ParseErrorBundle)
 
 type ComputeFunction a = Text -> a
 
@@ -27,3 +29,7 @@ liftMaybeFromTuple (_, _) = Nothing
 
 concatInts :: (Int, Int) -> Int
 concatInts (a, b) = 10 * a + b
+
+prettyPrintParseError :: (Show s) => Either (ParseErrorBundle Text Void) s -> Text
+prettyPrintParseError (Right x) = show x
+prettyPrintParseError (Left x) = T.pack $ errorBundlePretty x
