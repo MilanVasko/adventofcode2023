@@ -25,12 +25,16 @@ fromList rowCount' colCount' items' =
         }
 
 (!) :: Grid a -> Coords -> a
-(!) grid (x, y) = grid.items V.! index
-  where
-    index = y * grid.colCount + x
+(!) g c = g.items V.! coordsToIndex g c
+
+(!?) :: Grid a -> Coords -> Maybe a
+(!?) g c = g.items V.!? coordsToIndex g c
 
 indexToCoords :: Grid a -> Int -> Coords
 indexToCoords g index = (index `mod` g.colCount, index `div` g.colCount)
+
+coordsToIndex :: Grid a -> Coords -> Int
+coordsToIndex g (x, y) = y * g.colCount + x
 
 areCoordsInBounds :: Grid a -> Coords -> Bool
 areCoordsInBounds g (x, y) = x >= 0 && x < g.colCount && y >= 0 && y < g.rowCount

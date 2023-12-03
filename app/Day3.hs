@@ -1,10 +1,10 @@
 module Day3 where
 
-import Data.Char (digitToInt, isDigit)
+import Data.Char (isDigit)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Grid (Grid, (!))
+import Grid (Grid, (!), (!?))
 import Grid qualified as G
 import Util qualified as U
 
@@ -26,33 +26,26 @@ calculate1 content = do
 calculate2 :: Text -> Maybe Text
 calculate2 content = do
     grid <- parseGrid content
-    let numbers = findAllNumbers grid
     let allStars = findAllStars grid
     let allStarNeighbourCoords = map (G.neighbourCoords grid 1 . fst) allStars
     let numberStarNeighbourCoords = map (mapMaybe (lookupAndKeepCoordsIfNumber grid)) allStarNeighbourCoords
     let deduplicatedNumberCoords = deduplicateNumberCoords grid numberStarNeighbourCoords
     let deduplicatedNumberStrings = lookupWholeNumbersFromTheRight grid deduplicatedNumberCoords
     let exactlyTwoNumberStrings = filter ((==) 2 . length) deduplicatedNumberStrings
-    exactlyTwoNumbers <- mapM (mapM $ U.textToInt . T.pack) exactlyTwoNumberStrings
+    exactlyTwoNumbers <- mapM (mapM U.textToInt) exactlyTwoNumberStrings
     let powers = map product exactlyTwoNumbers
     return $ show $ sum powers
 
-lookupWholeNumbersFromTheRight :: Grid Char -> [[G.Coords]] -> [[String]]
-lookupWholeNumbersFromTheRight = map . lookupWholeNumbersFromTheRight'
+lookupWholeNumbersFromTheRight :: Grid Char -> [[G.Coords]] -> [[Text]]
+lookupWholeNumbersFromTheRight = map . (map . lookupWholeNumberFromTheRight T.empty)
 
-lookupWholeNumbersFromTheRight' :: Grid Char -> [G.Coords] -> [String]
-lookupWholeNumbersFromTheRight' grid = map (lookupWholeNumberFromTheRight grid)
-
-lookupWholeNumberFromTheRight :: Grid Char -> G.Coords -> String
-lookupWholeNumberFromTheRight = lookupWholeNumberFromTheRight' []
-
-lookupWholeNumberFromTheRight' :: [Char] -> Grid Char -> G.Coords -> String
-lookupWholeNumberFromTheRight' accum grid coords@(cx, cy) =
+lookupWholeNumberFromTheRight :: Text -> Grid Char -> G.Coords -> Text
+lookupWholeNumberFromTheRight accum grid coords@(cx, cy) =
     if isDigit c
         then
             if G.areCoordsInBounds grid (cx - 1, cy)
-                then lookupWholeNumberFromTheRight' (c : accum) grid (cx - 1, cy)
-                else c : accum
+                then lookupWholeNumberFromTheRight (T.cons c accum) grid (cx - 1, cy)
+                else T.cons c accum
         else accum
   where
     c = grid ! coords
@@ -67,15 +60,14 @@ deduplicateNumberCoords' grid coords =
 
 findRightmostCoordsOfANumber :: Grid Char -> G.Coords -> G.Coords
 findRightmostCoordsOfANumber grid (cx, cy) =
-    if isDigit (grid ! (cx + 1, cy))
-        then findRightmostCoordsOfANumber grid (cx + 1, cy)
+    if G.areCoordsInBounds grid newCoords && isDigit (grid ! newCoords)
+        then findRightmostCoordsOfANumber grid newCoords
         else (cx, cy)
-
--- TODO: Maybe-based lookup function for grid to refactor this?
-lookupAndKeepCoordsIfNumber :: Grid Char -> G.Coords -> Maybe G.Coords
-lookupAndKeepCoordsIfNumber grid coords = if isDigit c then Just coords else Nothing
   where
-    c = grid ! coords
+    newCoords = (cx + 1, cy)
+
+lookupAndKeepCoordsIfNumber :: Grid Char -> G.Coords -> Maybe G.Coords
+lookupAndKeepCoordsIfNumber grid coords = fmap (const coords) $ find isDigit $ grid !? coords
 
 containsSymbol :: [Char] -> Bool
 containsSymbol = any (\c -> not (isDigit c) && c /= '.')
@@ -88,28 +80,24 @@ parseGrid content = do
     let rowCount = length rows
     Just $ G.fromList rowCount colCount (T.unpack (T.concat rows))
 
--- TODO: refactor duplicities and reuse findAllStars in findAllNumbers?
 findAllStars :: Grid Char -> [(G.Coords, Char)]
-findAllStars grid =
-    V.toList $
-        V.filter (\(index, item) -> item == '*') $
-            V.imap (\index item -> (G.indexToCoords grid index, item)) grid.items
+findAllStars = filterGridItemsWithCoords (== '*')
 
 findAllNumbers :: Grid Char -> [(G.Coords, Text)]
-findAllNumbers grid =
-    foldr combinator [] $
-        V.imap (\index item -> (G.indexToCoords grid index, item)) $
-            grid.items
+findAllNumbers = foldr combinator [] . filterGridItemsWithCoords isDigit
   where
     combinator :: (G.Coords, Char) -> [(G.Coords, Text)] -> [(G.Coords, Text)]
-    combinator (curCoords, curChar) [] = [(curCoords, T.singleton curChar) | isDigit curChar]
-    combinator (curCoords@(curX, _), curChar) (prev@((prevX, prevY), prevNum) : ax) =
-        if isDigit curChar
-            then
-                if curX + 1 == prevX
-                    then (curCoords, T.cons curChar prevNum) : ax
-                    else (curCoords, T.singleton curChar) : prev : ax
-            else prev : ax
+    combinator (curCoords, curChar) [] = [(curCoords, T.singleton curChar)]
+    combinator (curCoords@(curX, _), curChar) (prev@((prevX, _), prevNum) : ax) =
+        if curX + 1 == prevX
+            then (curCoords, T.cons curChar prevNum) : ax
+            else (curCoords, T.singleton curChar) : prev : ax
+
+filterGridItemsWithCoords :: (a -> Bool) -> Grid a -> [(G.Coords, a)]
+filterGridItemsWithCoords predicate grid =
+    V.toList $
+        V.filter (\(_, item) -> predicate item) $
+            V.imap (\index item -> (G.indexToCoords grid index, item)) grid.items
 
 findColCount :: NonEmpty Text -> Maybe Int
 findColCount rows =
