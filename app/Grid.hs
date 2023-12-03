@@ -37,7 +37,7 @@ areCoordsInBounds g (x, y) = x >= 0 && x < g.colCount && y >= 0 && y < g.rowCoun
 
 neighbourCoords :: Grid a -> Int -> Coords -> [Coords]
 neighbourCoords g size (x, y) =
-    let allAreaCoords = [(xx, yy) | xx <- [(x - 1) .. (x + size)], yy <- [y - 1 .. y + 1]]
+    let allAreaCoords = [(xx, yy) | yy <- [y - 1 .. y + 1], xx <- [(x - 1) .. (x + size)]]
         inBoundsAreaCoords = filter (areCoordsInBounds g) allAreaCoords
         areOutsideCoords (cx, cy) = y /= cy || cx < x || cx >= x + size
      in filter areOutsideCoords inBoundsAreaCoords
