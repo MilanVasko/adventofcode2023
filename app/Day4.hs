@@ -18,13 +18,33 @@ filePath :: FilePath
 filePath = "data/day4.txt"
 
 run :: IO ()
-run = U.loadAndRun' filePath calculate calculate
+run = U.loadAndRun' filePath (calculate calculation1) (calculate calculation2)
 
-calculate :: Text -> Text
-calculate = U.prettyPrintParseError . fmap calculation1 . parseCard
+calculate :: (Show a) => ([Card] -> a) -> Text -> Text
+calculate fn = U.prettyPrintParseError . fmap fn . parseCard
 
 calculation1 :: [Card] -> Int
 calculation1 = sum . map calculatePoints1 . findWinningNumbersEverywhere
+
+calculation2 :: [Card] -> Int
+calculation2 = countAllTheCards . map length . findWinningNumbersEverywhere
+
+countAllTheCards :: [Int] -> Int
+countAllTheCards matchingNumbers = countAllTheCards' 0 (take (length matchingNumbers) $ repeat 1) matchingNumbers
+
+countAllTheCards' :: Int -> [Int] -> [Int] -> Int
+countAllTheCards' accum [] [] = accum
+countAllTheCards' accum (copy : copies) (matchingNumber : matchingNumbers) =
+    countAllTheCards' (accum + copy) (addUpCopies copy matchingNumber copies) matchingNumbers
+countAllTheCards' _ _ _ = error "Should not happen"
+
+addUpCopies :: Int -> Int -> [Int] -> [Int]
+addUpCopies step amount copies = addUpCopies' step [] amount copies
+  where
+    addUpCopies' :: Int -> [Int] -> Int -> [Int] -> [Int]
+    addUpCopies' _ accum 0 copies' = reverse accum ++ copies'
+    addUpCopies' _ accum _ [] = reverse accum
+    addUpCopies' step' accum amount' (c : cs) = addUpCopies' step' ((c + step') : accum) (amount' - 1) cs
 
 calculatePoints1 :: [Int] -> Int
 calculatePoints1 = foldr (\_ accum -> if accum == 0 then 1 else accum * 2) 0
