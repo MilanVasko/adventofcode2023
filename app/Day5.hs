@@ -49,10 +49,10 @@ data Almanac = Almanac
     deriving stock (Show)
 
 run :: IO ()
-run = U.loadAndRun' filePath calculate calculate
+run = U.loadAndRun' filePath (calculate calculation2) (calculate calculation2)
 
-calculate :: Text -> Text
-calculate = U.prettyPrintParseError . fmap calculation1 . parseAlmanac
+calculate :: (Almanac -> Int) -> Text -> Text
+calculate fn = U.prettyPrintParseError . fmap fn . parseAlmanac
 
 calculation1 :: Almanac -> Int
 calculation1 almanac =
@@ -65,6 +65,26 @@ calculation1 almanac =
                             map (\seed' -> calculateIndex SoilIndex (\(SoilIndex ss) -> FertilizerIndex ss) seed' almanac.soilToFertilizerMap) $
                                 map (\seed' -> calculateIndex SeedIndex (\(SeedIndex ss) -> SoilIndex ss) seed' almanac.seedToSoilMap) $
                                     almanac.seeds
+
+calculation2 :: Almanac -> Int
+calculation2 almanac =
+    foldr (\(LocationIndex item) accum -> min item accum) maxInt $
+        map (\seed' -> calculateIndex HumidityIndex (\(HumidityIndex ss) -> LocationIndex ss) seed' almanac.humidityToLocationMap) $
+            map (\seed' -> calculateIndex TemperatureIndex (\(TemperatureIndex ss) -> HumidityIndex ss) seed' almanac.temperatureToHumidityMap) $
+                map (\seed' -> calculateIndex LightIndex (\(LightIndex ss) -> TemperatureIndex ss) seed' almanac.lightToTemperatureMap) $
+                    map (\seed' -> calculateIndex WaterIndex (\(WaterIndex ss) -> LightIndex ss) seed' almanac.waterToLightMap) $
+                        map (\seed' -> calculateIndex FertilizerIndex (\(FertilizerIndex ss) -> WaterIndex ss) seed' almanac.fertilizerToWaterMap) $
+                            map (\seed' -> calculateIndex SoilIndex (\(SoilIndex ss) -> FertilizerIndex ss) seed' almanac.soilToFertilizerMap) $
+                                map (\seed' -> calculateIndex SeedIndex (\(SeedIndex ss) -> SoilIndex ss) seed' almanac.seedToSoilMap) $
+                                    (moreSeedsForCalculation2 almanac.seeds)
+
+moreSeedsForCalculation2 :: [SeedIndex] -> [SeedIndex]
+moreSeedsForCalculation2 = moreSeedsForCalculation2' []
+  where
+    moreSeedsForCalculation2' :: [SeedIndex] -> [SeedIndex] -> [SeedIndex]
+    moreSeedsForCalculation2' accum [] = accum
+    moreSeedsForCalculation2' _ [_] = error "TODO"
+    moreSeedsForCalculation2' accum (SeedIndex a : SeedIndex b : rest) = moreSeedsForCalculation2' (map SeedIndex [a .. a + b - 1] ++ accum) rest
 
 calculateIndex :: (Ord s, Num s, Num d) => (Int -> s) -> (s -> d) -> s -> [MappingDefinition s d] -> d
 calculateIndex sc sd source definitions = case filter (\d -> source >= d.sourceStart && source < d.sourceStart + sc d.rangeLength) definitions of
