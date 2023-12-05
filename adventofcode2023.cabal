@@ -136,5 +136,6 @@ executable adventofcode2023
         Day2
         Day3
         Day4
+        Day5
         Grid
         Util
