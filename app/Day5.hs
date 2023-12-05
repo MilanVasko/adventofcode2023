@@ -1,5 +1,7 @@
 module Day5 where
 
+-- TODO: REFACTOR EVERYTHING!!!
+
 import Data.Set qualified as Set
 import Text.Megaparsec (Parsec, chunk, parse, sepBy1, sepEndBy, someTill)
 import Text.Megaparsec.Char (char, hspace, newline, space)
