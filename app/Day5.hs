@@ -1,6 +1,7 @@
 module Day5 where
 
 -- TODO: REFACTOR EVERYTHING!!!
+-- TODO: optimize
 
 import Data.Set qualified as Set
 import Text.Megaparsec (Parsec, chunk, parse, sepBy1, sepEndBy, someTill)

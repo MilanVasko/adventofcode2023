@@ -1,12 +1,12 @@
 module Day6 where
 
--- TODO: REFACTOR EVERYTHING!!!
-
 import Text.Megaparsec (Parsec, chunk, parse, sepBy1)
 import Text.Megaparsec.Char (char, hspace, newline)
 import Text.Megaparsec.Char.Lexer (decimal)
 import Text.Megaparsec.Error (ParseErrorBundle)
 import Util qualified as U
+
+-- TODO: mash the races together and optimize (can be calculated)
 
 filePath :: FilePath
 filePath = "data/day6.txt"
