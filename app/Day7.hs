@@ -2,11 +2,14 @@ module Day7 where
 
 import Data.Foldable (maximum)
 import Data.Map.Strict qualified as Map
+import Data.Text qualified as T
 import Text.Megaparsec (Parsec, choice, parse, sepEndBy1)
 import Text.Megaparsec.Char (char, hspace, newline)
 import Text.Megaparsec.Char.Lexer (decimal)
 import Text.Megaparsec.Error (ParseErrorBundle)
 import Util qualified as U
+
+-- TODO: refactor
 
 filePath :: FilePath
 filePath = "data/day7.txt"
@@ -18,7 +21,8 @@ data HandBid = HandBid
     deriving stock (Show)
 
 data Card
-    = Card2
+    = CardSpecialJ
+    | Card2
     | Card3
     | Card4
     | Card5
@@ -49,25 +53,31 @@ data SortableHandElement
     deriving stock (Show, Ord, Eq)
 
 run :: IO ()
-run = U.loadAndRun' filePath calculate calculate
+run = U.loadAndRun' filePath calculate1 calculate2
 
-calculate :: Text -> Text
-calculate =
+calculate1 :: Text -> Text
+calculate1 =
     U.prettyPrintParseError
-        . fmap (sum . zipWith (*) [1 ..] . map bid . sortOn createSortableHand)
-        . parseHandBids
+        . fmap (sum . zipWith (*) [1 ..] . map bid . sortOn createOrdinarySortableHand)
+        . parseHandBids False
 
-createSortableHand :: HandBid -> [SortableHandElement]
-createSortableHand = createSortableHandFromCards . hand
+calculate2 :: Text -> Text
+calculate2 =
+    U.prettyPrintParseError
+        . fmap (sum . zipWith (*) [1 ..] . map bid . sortOn createSpecialSortableHand)
+        . parseHandBids True
 
-createSortableHandFromCards :: [Card] -> [SortableHandElement]
-createSortableHandFromCards cards = ElementHandType (findHandType cards) : map ElementCard cards
+createOrdinarySortableHand :: HandBid -> [SortableHandElement]
+createOrdinarySortableHand = createOrdinarySortableHandFromCards . hand
 
-findHandType :: [Card] -> HandType
-findHandType = findHandType' Map.empty
+createOrdinarySortableHandFromCards :: [Card] -> [SortableHandElement]
+createOrdinarySortableHandFromCards cards = ElementHandType (findOrdinaryHandType cards) : map ElementCard cards
+
+findOrdinaryHandType :: [Card] -> HandType
+findOrdinaryHandType = findOrdinaryHandType' Map.empty
   where
-    findHandType' :: Map Card Int -> [Card] -> HandType
-    findHandType' counts [] = case Map.size counts of
+    findOrdinaryHandType' :: Map Card Int -> [Card] -> HandType
+    findOrdinaryHandType' counts [] = case Map.size counts of
         1 -> FiveOfAKind
         2 -> case maxValue of
             4 -> FourOfAKind
@@ -84,25 +94,57 @@ findHandType = findHandType' Map.empty
         _ -> error "Invalid count of unique cards"
       where
         maxValue = maximum $ Map.elems counts
-    findHandType' counts (c : cs) = findHandType' (Map.insertWith (+) c 1 counts) cs
+    findOrdinaryHandType' counts (c : cs) = findOrdinaryHandType' (Map.insertWith (+) c 1 counts) cs
 
-parseHandBids :: Text -> Either (ParseErrorBundle Text Void) [HandBid]
-parseHandBids = parse parser filePath
+createSpecialSortableHand :: HandBid -> [SortableHandElement]
+createSpecialSortableHand = createSpecialSortableHandFromCards . hand
+
+createSpecialSortableHandFromCards :: [Card] -> [SortableHandElement]
+createSpecialSortableHandFromCards cards = ElementHandType (findSpecialHandType cards) : map ElementCard cards
+
+findSpecialHandType :: [Card] -> HandType
+findSpecialHandType = findSpecialHandType' Map.empty
+  where
+    findSpecialHandType' :: Map Card Int -> [Card] -> HandType
+    findSpecialHandType' counts [] = case Map.size countsWithoutJ of
+        0 -> FiveOfAKind
+        1 -> FiveOfAKind
+        2 -> case maxValue of
+            4 -> FourOfAKind
+            3 -> FullHouse
+            _ -> error $ "Invalid count: " `T.append` show maxValue
+        3 -> case maxValue of
+            3 -> ThreeOfAKind
+            2 -> TwoPair
+            _ -> error $ "Invalid count: " `T.append` show maxValue
+        4 -> case maxValue of
+            2 -> OnePair
+            _ -> error $ "Invalid count: " `T.append` show maxValue
+        5 -> HighCard
+        _ -> error "Invalid count of unique cards"
+      where
+        countsWithoutJ = Map.filterWithKey (\k _ -> k /= CardSpecialJ) counts
+        jCount = fromMaybe 0 $ Map.lookup CardSpecialJ counts
+        maxValue = maximum (Map.elems countsWithoutJ) + jCount
+    findSpecialHandType' counts (c : cs) = findSpecialHandType' (Map.insertWith (+) c 1 counts) cs
+
+parseHandBids :: Bool -> Text -> Either (ParseErrorBundle Text Void) [HandBid]
+parseHandBids treatJSpecially = parse (parser treatJSpecially) filePath
 
 type Parser = Parsec Void Text
 
-parser :: Parser [HandBid]
-parser = parseHandBid `sepEndBy1` newline
+parser :: Bool -> Parser [HandBid]
+parser treatJSpecially = parseHandBid treatJSpecially `sepEndBy1` newline
 
-parseHandBid :: Parser HandBid
-parseHandBid = do
-    hand' <- many parseCard
+parseHandBid :: Bool -> Parser HandBid
+parseHandBid treatJSpecially = do
+    hand' <- many (parseCard treatJSpecially)
     void hspace
     bid' <- decimal
     return HandBid{hand = hand', bid = bid'}
 
-parseCard :: Parser Card
-parseCard =
+parseCard :: Bool -> Parser Card
+parseCard treatJSpecially =
     choice
         [ Card2 <$ char '2'
         , Card3 <$ char '3'
@@ -113,7 +155,7 @@ parseCard =
         , Card8 <$ char '8'
         , Card9 <$ char '9'
         , CardT <$ char 'T'
-        , CardJ <$ char 'J'
+        , (if treatJSpecially then CardSpecialJ else CardJ) <$ char 'J'
         , CardQ <$ char 'Q'
         , CardK <$ char 'K'
         , CardA <$ char 'A'
