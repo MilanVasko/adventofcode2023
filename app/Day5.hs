@@ -3,9 +3,8 @@ module Day5 where
 -- TODO: REFACTOR EVERYTHING!!!
 -- TODO: optimize
 
-import Data.Set qualified as Set
-import Text.Megaparsec (Parsec, chunk, parse, sepBy1, sepEndBy, someTill)
-import Text.Megaparsec.Char (char, hspace, newline, space)
+import Text.Megaparsec (Parsec, chunk, parse, sepBy1)
+import Text.Megaparsec.Char (char, hspace, newline)
 import Text.Megaparsec.Char.Lexer (decimal)
 import Text.Megaparsec.Error (ParseErrorBundle)
 import Util qualified as U
