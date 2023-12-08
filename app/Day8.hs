@@ -4,7 +4,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust)
 import Data.Text qualified as T
 import Text.Megaparsec (Parsec, choice, parse, sepEndBy1)
-import Text.Megaparsec.Char (char, hspace, newline, upperChar)
+import Text.Megaparsec.Char (char, digitChar, hspace, newline, upperChar)
 import Text.Megaparsec.Error (ParseErrorBundle)
 import Util qualified as U
 
@@ -32,24 +32,62 @@ data Journey = Journey
     deriving stock (Show)
 
 run :: IO ()
-run = U.loadAndRun' filePath calculate calculate
+run = U.loadAndRun' filePath (calculate calculation1) (calculate calculation2)
 
-calculate :: Text -> Text
-calculate = U.prettyPrintParseError . fmap (performSteps . journeyFromDefinition) . parseFile
+calculate :: (Show a) => (Journey -> a) -> Text -> Text
+calculate fn = U.prettyPrintParseError . fmap (fn . journeyFromDefinition) . parseFile
+
+calculation1 :: Journey -> Int
+calculation1 = performHumanSteps
+
+calculation2 :: Journey -> Int
+calculation2 = performGhostSteps
 
 parseFile :: Text -> Either (ParseErrorBundle Text Void) ([Instruction], [NodeDefinition])
 parseFile = parse parser filePath
 
-performSteps :: Journey -> Int
-performSteps j = performSteps' (Node "AAA") 0 (cycle j.instructions)
+performHumanSteps :: Journey -> Int
+performHumanSteps j = performHumanSteps' (Node "AAA") 0 (cycle j.instructions)
   where
-    performSteps' :: Node -> Int -> [Instruction] -> Int
-    performSteps' (Node "ZZZ") accum _ = accum
-    performSteps' _ _ [] = error "Instructions can not be empty"
-    performSteps' currentNode accum (i : is) = performSteps' (applyInstruction i currentNode j.nodeMap) (accum + 1) is
+    performHumanSteps' :: Node -> Int -> [Instruction] -> Int
+    performHumanSteps' (Node "ZZZ") accum _ = accum
+    performHumanSteps' _ _ [] = error "Instructions can not be empty"
+    performHumanSteps' n accum (i : is) = performHumanSteps' (applyInstruction j.nodeMap i n) (accum + 1) is
 
-applyInstruction :: Instruction -> Node -> Map Node (Node, Node) -> Node
-applyInstruction i node m = extract i . fromJust $ Map.lookup node m
+performGhostSteps :: Journey -> Int
+performGhostSteps j = foldr lcm 1 individualStepsUntilEnd
+  where
+    startingNodes = findStartingNodes j.nodeMap
+    individualStepsUntilEnd = performStepsUntilEndingNode j.nodeMap (cycle j.instructions) <$> startingNodes
+
+performGhostSteps' :: Map Node (Node, Node) -> [Node] -> Int -> [Instruction] -> Int
+performGhostSteps' _ _ _ [] = error "Instructions can not be empty"
+performGhostSteps' m nodes accum (i : is) =
+    if all isEndingNode nodes
+        then accum
+        else performGhostSteps' m (map (applyInstruction m i) nodes) (accum + 1) is
+
+performStepsUntilEndingNode :: Map Node (Node, Node) -> [Instruction] -> Node -> Int
+performStepsUntilEndingNode m = performStepsUntilEndingNode' m 0
+
+performStepsUntilEndingNode' :: Map Node (Node, Node) -> Int -> [Instruction] -> Node -> Int
+performStepsUntilEndingNode' _ _ [] _ = error "Instructions can not be empty"
+performStepsUntilEndingNode' m accum (i : is) n =
+    if isEndingNode n
+        then accum
+        else performStepsUntilEndingNode' m (accum + 1) is (applyInstruction m i n)
+
+findStartingNodes :: Map Node (Node, Node) -> [Node]
+findStartingNodes = filter isStartingNode . Map.keys
+
+isStartingNode :: Node -> Bool
+isStartingNode (Node n) = T.isSuffixOf "A" n
+
+isEndingNode :: Node -> Bool
+isEndingNode (Node n) = T.isSuffixOf "Z" n
+
+applyInstruction :: Map Node (Node, Node) -> Instruction -> Node -> Node
+applyInstruction m i node = extract i . fromJust $ Map.lookup node m
   where
     extract :: Instruction -> ((a, a) -> a)
     extract GoLeft = fst
@@ -81,14 +119,17 @@ parseInstruction = choice [GoLeft <$ char 'L', GoRight <$ char 'R']
 
 parseNode :: Parser NodeDefinition
 parseNode = do
-    name <- many upperChar
+    name <- parseNodeName
     void hspace
     void (char '=')
     void hspace
     void (char '(')
-    other1 <- many upperChar
+    other1 <- parseNodeName
     void (char ',')
     void hspace
-    other2 <- many upperChar
+    other2 <- parseNodeName
     void (char ')')
     return $ NodeDefinition{name = T.pack name, other = (T.pack other1, T.pack other2)}
+
+parseNodeName :: Parser String
+parseNodeName = many $ choice [upperChar, digitChar]
