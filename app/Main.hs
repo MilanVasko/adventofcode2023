@@ -7,6 +7,7 @@ import Day3 qualified
 import Day4 qualified
 import Day6 qualified
 import Day7 qualified
+import Day8 qualified
 import Main.Utf8 (withUtf8)
 
 main :: IO ()
@@ -18,6 +19,7 @@ main = withUtf8 $ do
     -- runDay 5 Day5.run
     runDay 6 Day6.run
     runDay 7 Day7.run
+    runDay 8 Day8.run
 
 runDay :: Int -> IO () -> IO ()
 runDay n f = putText ("Day " `append` show n `append` ": ") >> f
