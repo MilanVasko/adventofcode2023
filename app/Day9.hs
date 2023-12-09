@@ -11,7 +11,7 @@ filePath :: FilePath
 filePath = "data/day9.txt"
 
 run :: IO ()
-run = U.loadAndRun' filePath (calculate calculation1) (calculate $ const ())
+run = U.loadAndRun' filePath (calculate calculation1) (calculate calculation2)
 
 calculate :: (Show a) => ([NonEmpty Int] -> a) -> Text -> Text
 calculate fn = U.prettyPrintParseError . fmap fn . parseFile
@@ -19,8 +19,22 @@ calculate fn = U.prettyPrintParseError . fmap fn . parseFile
 calculation1 :: [NonEmpty Int] -> Int
 calculation1 = sum . map (calculateNext . getLastElements . computeAllDifferenceLists)
 
+calculation2 :: [NonEmpty Int] -> Int
+calculation2 = sum . map (fromMaybe 0 . fmap head . nonEmpty . calculatePrevious . getFirstElements . computeAllDifferenceLists)
+
+calculatePrevious :: [Int] -> [Int]
+calculatePrevious = go [] 0 . drop 1 . reverse
+  where
+    go accum _ [] = accum
+    go accum val (item : rest) = go (newVal : accum) newVal rest
+      where
+        newVal = item - val
+
 calculateNext :: [Int] -> Int
 calculateNext = foldl' (+) 0 . drop 1 . reverse
+
+getFirstElements :: [NonEmpty Int] -> [Int]
+getFirstElements = map head
 
 getLastElements :: [NonEmpty Int] -> [Int]
 getLastElements = map last
