@@ -2,6 +2,7 @@ module Main where
 
 import Data.Text (append)
 import Day1 qualified
+import Day10 qualified
 import Day2 qualified
 import Day3 qualified
 import Day4 qualified
@@ -23,6 +24,7 @@ main = withUtf8 $ do
     runDay 7 Day7.run
     runDay 8 Day8.run
     runDay 9 Day9.run
+    runDay 10 Day10.run
 
 runDay :: Int -> IO () -> IO ()
 runDay n f = putText ("Day " `append` show n `append` ": ") >> f

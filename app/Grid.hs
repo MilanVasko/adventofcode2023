@@ -39,8 +39,17 @@ coordsToIndex g (x, y) = y * g.colCount + x
 areCoordsInBounds :: Grid a -> Coords -> Bool
 areCoordsInBounds g (x, y) = x >= 0 && x < g.colCount && y >= 0 && y < g.rowCount
 
-neighbourCoords :: Grid a -> Int -> Coords -> [Coords]
-neighbourCoords g size (x, y) =
+findCoords :: (a -> Bool) -> Grid a -> Maybe Coords
+findCoords f g = indexToCoords g <$> V.findIndex f g.items
+
+neighbourCoords :: Grid a -> Coords -> [Coords]
+neighbourCoords g = neighbourCoordsForSize g 1
+
+neighbourCoordsHV :: Grid a -> Coords -> [Coords]
+neighbourCoordsHV g (x, y) = filter (areCoordsInBounds g) [(x - 1, y), (x, y - 1), (x + 1, y), (x, y + 1)]
+
+neighbourCoordsForSize :: Grid a -> Int -> Coords -> [Coords]
+neighbourCoordsForSize g size (x, y) =
     let allAreaCoords = [(xx, yy) | yy <- [y - 1 .. y + 1], xx <- [(x - 1) .. (x + size)]]
         inBoundsAreaCoords = filter (areCoordsInBounds g) allAreaCoords
         areOutsideCoords (cx, cy) = y /= cy || cx < x || cx >= x + size

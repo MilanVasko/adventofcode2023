@@ -18,7 +18,7 @@ calculate1 :: Text -> Maybe Text
 calculate1 content = do
     grid <- parseGrid content
     let numbers = findAllNumbers grid
-    let numbersWithNeighbourCoords = map (\(coords, text) -> (G.neighbourCoords grid (T.length text) coords, text)) numbers
+    let numbersWithNeighbourCoords = map (\(coords, text) -> (G.neighbourCoordsForSize grid (T.length text) coords, text)) numbers
     let numbersWithNeighbourChars = map (first (map (grid !))) numbersWithNeighbourCoords
     numbersAdjacentToASymbol <- mapM (U.textToInt . snd) $ filter (containsSymbol . fst) numbersWithNeighbourChars
     return $ show $ sum numbersAdjacentToASymbol
@@ -27,7 +27,7 @@ calculate2 :: Text -> Maybe Text
 calculate2 content = do
     grid <- parseGrid content
     let allStars = findAllStars grid
-    let allStarNeighbourCoords = map (G.neighbourCoords grid 1 . fst) allStars
+    let allStarNeighbourCoords = map (G.neighbourCoords grid . fst) allStars
     let numberStarNeighbourCoords = map (mapMaybe (lookupAndKeepCoordsIfNumber grid)) allStarNeighbourCoords
     let deduplicatedNumberCoords = deduplicateNumberCoords grid numberStarNeighbourCoords
     let deduplicatedNumberStrings = lookupWholeNumbersFromTheRight grid deduplicatedNumberCoords
